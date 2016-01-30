@@ -3,12 +3,18 @@ package it.neokree.materialnavigationdrawer.elements;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.view.View;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import it.neokree.materialnavigationdrawer.elements.listeners.MaterialSectionListener;
 import it.neokree.materialnavigationdrawer.util.Utils;
@@ -93,6 +99,10 @@ public class MaterialAccount {
 
     public void setPhoto(Bitmap photo) {
         new ResizePhotoBitmap().execute(photo);
+    }
+
+    public void setPhoto(Uri photo) {
+        new RetrievePhotoResource().execute(photo);
     }
 
     public void setBackground(Bitmap background) {
@@ -197,6 +207,38 @@ public class MaterialAccount {
     }
 
     // asynctasks
+
+    private class RetrievePhotoResource extends  AsyncTask<Uri, Void, BitmapDrawable> {
+
+        @Override
+        protected BitmapDrawable doInBackground(Uri... urls) {
+            Point photoSize = Utils.getUserPhotoSize(resources);
+
+            Bitmap bmp = null;
+            try {
+                URL url = new URL(urls[0].toString());
+                HttpURLConnection con = (HttpURLConnection)url.openConnection();
+                InputStream is = con.getInputStream();
+                bmp = BitmapFactory.decodeStream(is);
+            } catch(Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+
+            Bitmap photo = Utils.resizeBitmap(bmp,photoSize.x,photoSize.y);
+
+            circularPhoto = new BitmapDrawable(resources,Utils.getCroppedBitmapDrawable(photo));
+            return new BitmapDrawable(resources, photo);
+        }
+
+        @Override
+        protected void onPostExecute(BitmapDrawable drawable) {
+            photo = drawable;
+
+            if(listener != null)
+                listener.onUserPhotoLoaded(MaterialAccount.this);
+        }
+    }
 
     private class ResizePhotoResource extends  AsyncTask<Integer, Void, BitmapDrawable> {
 
